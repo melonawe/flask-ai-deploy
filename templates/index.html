@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>리뷰 감성 분석</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #656d76;
+      --border: #d0d7de;
+      --accent: #2563eb;
+      --pos: #16a34a;
+      --neg: #dc2626;
+      --neu: #6b7280;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --border: #30363d;
+        --accent: #3b82f6;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+      line-height: 1.5;
+    }
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.5rem; }
+    p.sub { margin: 0 0 20px; color: var(--muted); font-size: 0.95rem; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      resize: vertical;
+    }
+    textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    button {
+      margin-top: 12px;
+      padding: 10px 20px;
+      font: inherit;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.1); }
+    .result {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-left-width: 6px;
+    }
+    .result.POSITIVE { border-left-color: var(--pos); }
+    .result.NEGATIVE { border-left-color: var(--neg); }
+    .result.NEUTRAL { border-left-color: var(--neu); }
+    .label { font-size: 1.25rem; font-weight: 700; }
+    .POSITIVE .label { color: var(--pos); }
+    .NEGATIVE .label { color: var(--neg); }
+    .NEUTRAL .label { color: var(--neu); }
+    .counts { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
+    .hint { margin-top: 20px; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>리뷰 감성 분석</h1>
+    <p class="sub">영어 리뷰를 입력하면 긍정/부정 단어를 세어 감성을 판별합니다.</p>
+
+    <form method="post" action="/">
+      <label for="review">리뷰</label>
+      <textarea id="review" name="review" placeholder="e.g. This movie was amazing, I love it!" required>{{ text }}</textarea>
+      <button type="submit">분석하기</button>
+    </form>
+
+    {% if result %}
+      {% set cls = result.split(' ')[0] %}
+      <section class="result {{ cls }}">
+        <div class="label">{{ result }}</div>
+        <div class="counts">
+          긍정 단어: {{ positive_count }}개 · 부정 단어: {{ negative_count }}개
+        </div>
+      </section>
+    {% endif %}
+
+    <p class="hint">
+      긍정 단어: good, great, excellent, amazing, love<br>
+      부정 단어: bad, terrible, awful, hate, sad
+    </p>
+  </main>
+</body>
+</html>
