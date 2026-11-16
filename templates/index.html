@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>리뷰 감성 분석</title>
+  <title>일본 생활 적합도 분석</title>
   <style>
     :root {
       --bg: #f5f6f8;
@@ -12,9 +12,11 @@
       --muted: #656d76;
       --border: #d0d7de;
       --accent: #2563eb;
-      --pos: #16a34a;
-      --neg: #dc2626;
-      --neu: #6b7280;
+      --accent-soft: #e0eaff;
+      --comfort: #16a34a;
+      --hard: #dc2626;
+      --mid: #6b7280;
+      --track: #e5e7eb;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -24,95 +26,351 @@
         --muted: #8b949e;
         --border: #30363d;
         --accent: #3b82f6;
+        --accent-soft: #1c2b4a;
+        --track: #30363d;
       }
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 40px 16px;
+      padding: 32px 16px 64px;
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
-      line-height: 1.5;
+      line-height: 1.55;
     }
-    main {
-      max-width: 640px;
-      margin: 0 auto;
+    main { max-width: 680px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    h2 { margin: 0 0 4px; font-size: 1.15rem; }
+    p.sub { margin: 0; color: var(--muted); }
+    .card {
+      margin-bottom: 16px;
+      padding: 20px;
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
+      border-radius: 14px;
     }
-    h1 { margin: 0 0 4px; font-size: 1.5rem; }
-    p.sub { margin: 0 0 20px; color: var(--muted); font-size: 0.95rem; }
-    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .step { color: var(--accent); font-size: 0.85rem; font-weight: 700; }
+    .help { margin: 0 0 14px; color: var(--muted); font-size: 0.92rem; }
+
+    /* 보이지 않지만 키보드와 브라우저 검증이 닿는 입력 */
+    .pick input { position: absolute; opacity: 0; pointer-events: none; }
+    .pick { position: relative; cursor: pointer; }
+    .pick span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      text-align: center;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pick:hover span { border-color: var(--accent); }
+    .pick input:checked + span {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .pick input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .chips .pick span { border-radius: 999px; padding: 8px 16px; }
     textarea {
       width: 100%;
-      min-height: 140px;
+      min-height: 110px;
       padding: 12px;
       font: inherit;
       color: var(--text);
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       resize: vertical;
     }
-    textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    button {
-      margin-top: 12px;
-      padding: 10px 20px;
-      font: inherit;
+    textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .counter { margin-top: 4px; color: var(--muted); font-size: 0.82rem; text-align: right; }
+
+    .progress {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin-bottom: 16px;
+      padding: 10px 0;
+      background: var(--bg);
+    }
+    .progress-text { display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--muted); }
+    .bar { height: 8px; margin-top: 6px; background: var(--track); border-radius: 4px; overflow: hidden; }
+    .bar span { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.2s; }
+
+    fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+    fieldset.q { scroll-margin-top: 80px; }
+    fieldset.q.missing { border-color: var(--hard); }
+    /* float로 띄워야 legend가 카드 테두리 위가 아니라 카드 안쪽에 놓인다 */
+    legend { float: left; width: 100%; padding: 0; margin-bottom: 12px; font-weight: 600; }
+    .q-num { color: var(--muted); font-weight: 400; }
+    .scale { clear: both; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .scale .pick span { padding: 6px 2px; font-size: 0.85rem; line-height: 1.25; word-break: keep-all; }
+
+    .error {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border: 1px solid var(--hard);
+      border-radius: 10px;
+      color: var(--hard);
       font-weight: 600;
+    }
+    label.check { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+    label.check input { margin-top: 5px; accent-color: var(--accent); }
+    .note { margin: 8px 0 12px; color: var(--muted); font-size: 0.85rem; }
+    .extra { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+    .extra label { display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; }
+    select {
+      padding: 8px;
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    button, a.button {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      font: inherit;
+      font-size: 1.05rem;
+      font-weight: 700;
       color: #fff;
       background: var(--accent);
       border: 0;
-      border-radius: 8px;
+      border-radius: 12px;
       cursor: pointer;
+      text-align: center;
+      text-decoration: none;
     }
-    button:hover { filter: brightness(1.1); }
-    .result {
-      margin-top: 24px;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      border-left-width: 6px;
+    button:hover, a.button:hover { filter: brightness(1.1); }
+
+    .total { border-left-width: 6px; }
+    .total.comfort { border-left-color: var(--comfort); }
+    .total.mid { border-left-color: var(--mid); }
+    .total.hard { border-left-color: var(--hard); }
+    .total .number { font-size: 2.4rem; font-weight: 700; line-height: 1.2; }
+    .total .number small { font-size: 1rem; color: var(--muted); font-weight: 400; }
+    .mood { padding: 12px 0; border-top: 1px solid var(--border); }
+    .mood:first-of-type { border-top: 0; padding-top: 4px; }
+    .mood strong { display: block; }
+    .mood p, .axis p { margin: 2px 0 0; color: var(--muted); font-size: 0.92rem; }
+    .tag { margin-left: 6px; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+    blockquote {
+      margin: 0 0 12px;
+      padding: 10px 14px;
+      border-left: 3px solid var(--border);
+      color: var(--muted);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
-    .result.POSITIVE { border-left-color: var(--pos); }
-    .result.NEGATIVE { border-left-color: var(--neg); }
-    .result.NEUTRAL { border-left-color: var(--neu); }
-    .label { font-size: 1.25rem; font-weight: 700; }
-    .POSITIVE .label { color: var(--pos); }
-    .NEGATIVE .label { color: var(--neg); }
-    .NEUTRAL .label { color: var(--neu); }
-    .counts { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
-    .hint { margin-top: 20px; color: var(--muted); font-size: 0.85rem; }
+    .axis { margin-top: 16px; }
+    .axis-head { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+    .axis .bar { margin: 6px 0; }
+    .comfort .bar span { background: var(--comfort); }
+    .mid .bar span { background: var(--mid); }
+    .hard .bar span { background: var(--hard); }
+    .hint { margin: 16px 0 0; color: var(--muted); font-size: 0.85rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto !important; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>리뷰 감성 분석</h1>
-    <p class="sub">영어 리뷰를 입력하면 긍정/부정 단어를 세어 감성을 판별합니다.</p>
-
-    <form method="post" action="/">
-      <label for="review">리뷰</label>
-      <textarea id="review" name="review" placeholder="e.g. This movie was amazing, I love it!" required>{{ text }}</textarea>
-      <button type="submit">분석하기</button>
-    </form>
+    <header>
+      <h1>일본 생활 적합도 분석</h1>
+      <p class="sub">지금 마음을 먼저 적고, 22개 문항에 답하면 일본 생활에서 편할 부분과 힘들 부분을 알려드립니다. 3분 정도 걸립니다.</p>
+    </header>
 
     {% if result %}
-      {% set cls = result.split(' ')[0] %}
-      <section class="result {{ cls }}">
-        <div class="label">{{ result }}</div>
-        <div class="counts">
-          긍정 단어: {{ positive_count }}개 · 부정 단어: {{ negative_count }}개
-        </div>
+      <section class="card total {{ result.level }}">
+        <div>종합 적합도</div>
+        <div class="number">{{ result.total }}<small> / 100</small></div>
+        {% if result.comfort %}
+          <div><strong>편하게 느낄 부분:</strong> {{ result.comfort | map(attribute="name") | join(", ") }}</div>
+        {% endif %}
+        {% if result.hard %}
+          <div><strong>힘들 수 있는 부분:</strong> {{ result.hard | map(attribute="name") | join(", ") }}</div>
+        {% endif %}
       </section>
-    {% endif %}
 
-    <p class="hint">
-      긍정 단어: good, great, excellent, amazing, love<br>
-      부정 단어: bad, terrible, awful, hate, sad
-    </p>
+      {% if found_moods or feeling %}
+        <section class="card">
+          <h2>지금 마음</h2>
+          {% if feeling %}<blockquote>{{ feeling }}</blockquote>{% endif %}
+          {% for mood in found_moods %}
+            <div class="mood">
+              <strong>{{ mood.emoji }} {{ mood.label }}{% if mood.from_text %}<span class="tag">적어주신 글에서 찾음</span>{% endif %}</strong>
+              <p>{{ mood.message }}</p>
+            </div>
+          {% else %}
+            <p class="help">적어주신 글에서 뚜렷한 감정 단어를 찾지 못했습니다.</p>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      <section class="card">
+        <h2>문화 특징별 결과</h2>
+        {% for axis in result.culture %}
+          <div class="axis {{ axis.level }}">
+            <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
+            <div class="bar"><span style="width: {{ axis.score }}%"></span></div>
+            <p>{{ axis.comment }}</p>
+          </div>
+        {% endfor %}
+      </section>
+
+      <section class="card">
+        <h2>성격 특성</h2>
+        {% for axis in result.personality %}
+          <div class="axis {{ axis.level }}">
+            <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
+            <div class="bar"><span style="width: {{ axis.score }}%"></span></div>
+            <p>{{ axis.comment }}</p>
+          </div>
+        {% endfor %}
+      </section>
+
+      <a class="button" href="/">다시 하기</a>
+
+      {% if saved %}
+        <p class="hint">응답이 익명으로 저장되었습니다.</p>
+      {% elif consent %}
+        <p class="hint">응답을 저장하지 못했습니다. 결과에는 영향이 없습니다.</p>
+      {% endif %}
+
+      <p class="hint">
+        점수는 응답을 단순 합산한 결과이며, 학습된 예측 모델이 아닙니다.
+        감정은 선택한 항목과 글 속 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
+        문화 특징은 흔히 언급되는 경향일 뿐 모든 일본인에게 해당하지 않습니다.
+        점수가 낮은 항목은 "맞지 않는다"가 아니라 "미리 알아두면 좋은 부분"으로 읽어 주세요.
+      </p>
+    {% else %}
+      {% if error %}<div class="error" role="alert">{{ error }} 빨간 테두리로 표시된 문항을 확인해 주세요.</div>{% endif %}
+
+      <form method="post" action="/" data-survey>
+        <section class="card">
+          <div class="step">1단계 · 선택</div>
+          <h2>일본 생활을 떠올리면 어떤 마음이 드나요?</h2>
+          <p class="help">해당하는 것을 모두 눌러 주세요. 건너뛰어도 됩니다.</p>
+          <div class="chips">
+            {% for mood in moods %}
+              <label class="pick">
+                <input type="checkbox" name="mood" value="{{ mood.key }}" {{ 'checked' if mood.key in selected_moods }}>
+                <span>{{ mood.emoji }} {{ mood.label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <label for="feeling" class="help">더 하고 싶은 말이 있다면 편하게 적어 주세요.</label>
+          <textarea id="feeling" name="feeling" maxlength="{{ max_text_length }}"
+                    placeholder="예: 일본어는 자신 있는데, 친구를 사귈 수 있을지 걱정돼요.">{{ feeling }}</textarea>
+          <div class="counter"><span data-count>{{ feeling | length }}</span> / {{ max_text_length }}</div>
+        </section>
+
+        <div class="progress">
+          <div class="progress-text">
+            <span class="step">2단계 · 문항</span>
+            <span><span data-done>{{ answers | length }}</span> / {{ questions | length }} 완료</span>
+          </div>
+          <div class="bar"><span data-bar style="width: {{ (answers | length) / (questions | length) * 100 }}%"></span></div>
+        </div>
+
+        {% for q in questions %}
+          <fieldset class="card q {{ 'missing' if error and q.id not in answers }}">
+            <legend><span class="q-num">{{ loop.index }}.</span> {{ q.text }}</legend>
+            <div class="scale">
+              {% for value, label in scale %}
+                <label class="pick">
+                  <input type="radio" name="{{ q.id }}" value="{{ value }}" required
+                         {{ 'checked' if answers.get(q.id) == value }}>
+                  <span>{{ label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </fieldset>
+        {% endfor %}
+
+        <section class="card">
+          <div class="step">3단계 · 선택</div>
+          <h2>응답 저장</h2>
+          <label class="check">
+            <input type="checkbox" name="consent" value="yes" {{ 'checked' if consent }}>
+            내 응답을 익명으로 저장해 분석 모델 개선에 쓰는 데 동의합니다.
+          </label>
+          <p class="note">이름, 이메일, IP는 저장하지 않습니다. 동의하면 위에서 고른 감정과 적은 글도 함께 저장되니, 글에 개인 정보는 적지 말아 주세요. 동의하지 않아도 결과는 똑같이 볼 수 있습니다.</p>
+          <div class="extra">
+            <label>일본 거주 경험
+              <select name="lived">
+                <option value="">선택 안 함</option>
+                {% for key, label in lived_choices %}
+                  <option value="{{ key }}" {{ 'selected' if lived == key }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>거주했다면, 일본 생활 만족도
+              <select name="satisfaction">
+                <option value="">선택 안 함</option>
+                {% for value in range(1, 6) %}
+                  <option value="{{ value }}" {{ 'selected' if satisfaction == value }}>{{ value }}점</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <button type="submit">결과 보기</button>
+      </form>
+
+      <script>
+        (function () {
+          var form = document.querySelector("form[data-survey]");
+          var sets = Array.prototype.slice.call(form.querySelectorAll("fieldset.q"));
+          var done = form.querySelector("[data-done]");
+          var bar = form.querySelector("[data-bar]");
+          var textarea = form.querySelector("textarea");
+          var count = form.querySelector("[data-count]");
+          var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+          function answered(set) { return !!set.querySelector("input:checked"); }
+
+          function update() {
+            var n = sets.filter(answered).length;
+            done.textContent = n;
+            bar.style.width = (n / sets.length * 100) + "%";
+          }
+
+          form.addEventListener("change", function (event) {
+            if (event.target.type !== "radio") return;
+            event.target.closest("fieldset.q").classList.remove("missing");
+            update();
+          });
+
+          // 마우스나 터치로 고른 경우에만 다음 문항으로 이동한다. 키보드 조작은 방해하지 않는다.
+          form.addEventListener("click", function (event) {
+            if (event.target.type !== "radio" || event.detail === 0) return;
+            var index = sets.indexOf(event.target.closest("fieldset.q"));
+            var next = sets.slice(index + 1).filter(function (set) { return !answered(set); })[0];
+            if (next) next.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+          });
+
+          textarea.addEventListener("input", function () { count.textContent = textarea.value.length; });
+
+          var firstMissing = form.querySelector("fieldset.q.missing");
+          if (firstMissing) firstMissing.scrollIntoView({ block: "center" });
+          update();
+        })();
+      </script>
+    {% endif %}
   </main>
 </body>
 </html>
