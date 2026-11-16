@@ -189,7 +189,7 @@
   <main>
     <header>
       <h1>일본 생활 적합도 분석</h1>
-      <p class="sub">지금 마음을 먼저 적고, 22개 문항에 답하면 일본 생활에서 편할 부분과 힘들 부분을 알려드립니다. 3분 정도 걸립니다.</p>
+      <p class="sub">지금 마음을 먼저 적고, {{ questions | length }}개 문항에 답하면 일본 생활에서 편할 부분과 힘들 부분을 알려드립니다. 5분 정도 걸립니다.</p>
     </header>
 
     {% if result %}
@@ -231,7 +231,7 @@
       </section>
 
       <section class="card">
-        <h2>성격 특성</h2>
+        <h2>적응과 관련된 특성</h2>
         {% for axis in result.personality %}
           <div class="axis {{ axis.level }}">
             <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
@@ -250,7 +250,11 @@
       {% endif %}
 
       <p class="hint">
-        점수는 응답을 단순 합산한 결과이며, 학습된 예측 모델이 아닙니다.
+        {% if result.method == "model" %}
+          종합 점수는 일본 거주 경험자 {{ result.model_samples }}명의 응답으로 학습한 모델의 예측값입니다.
+        {% else %}
+          종합 점수는 해외 적응 연구에서 예측력이 크다고 보고된 항목에 더 큰 비중을 둔 가중 평균이며, 아직 학습된 예측 모델은 아닙니다.
+        {% endif %}
         감정은 선택한 항목과 글 속 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
         문화 특징은 흔히 언급되는 경향일 뿐 모든 일본인에게 해당하지 않습니다.
         점수가 낮은 항목은 "맞지 않는다"가 아니라 "미리 알아두면 좋은 부분"으로 읽어 주세요.
