@@ -30,12 +30,13 @@ CREATE TABLE IF NOT EXISTS responses (
     lived TEXT,
     satisfaction INTEGER,
     moods TEXT,
-    feeling TEXT
+    feeling TEXT,
+    emotions TEXT
 )
 """
 
 # 이전 버전에서 만든 테이블에 없는 열
-ADDED_COLUMNS = {"moods": "TEXT", "feeling": "TEXT"}
+ADDED_COLUMNS = {"moods": "TEXT", "feeling": "TEXT", "emotions": "TEXT"}
 
 
 def _prepare(conn):
@@ -46,15 +47,17 @@ def _prepare(conn):
             conn.execute(f"ALTER TABLE responses ADD COLUMN {name} {column_type}")
 
 
-def save_response(answers, total, lived=None, satisfaction=None, moods=None, feeling=None):
+def save_response(
+    answers, total, lived=None, satisfaction=None, moods=None, feeling=None, emotions=None
+):
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with closing(sqlite3.connect(DB_PATH)) as conn:
         with conn:
             _prepare(conn)
             conn.execute(
                 "INSERT INTO responses"
-                " (created_at, answers, total, lived, satisfaction, moods, feeling)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                " (created_at, answers, total, lived, satisfaction, moods, feeling, emotions)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     created_at,
                     json.dumps(answers, sort_keys=True),
@@ -63,6 +66,7 @@ def save_response(answers, total, lived=None, satisfaction=None, moods=None, fee
                     satisfaction,
                     json.dumps(moods or []),
                     feeling or None,
+                    json.dumps(emotions, ensure_ascii=False) if emotions else None,
                 ),
             )
 
@@ -73,7 +77,7 @@ def load_responses():
         with conn:
             _prepare(conn)
         rows = conn.execute(
-            "SELECT created_at, answers, total, lived, satisfaction, moods, feeling"
+            "SELECT created_at, answers, total, lived, satisfaction, moods, feeling, emotions"
             " FROM responses ORDER BY id"
         ).fetchall()
     return [
@@ -85,6 +89,7 @@ def load_responses():
             "satisfaction": satisfaction,
             "moods": json.loads(moods) if moods else [],
             "feeling": feeling,
+            "emotions": json.loads(emotions) if emotions else {},
         }
-        for created_at, answers, total, lived, satisfaction, moods, feeling in rows
+        for created_at, answers, total, lived, satisfaction, moods, feeling, emotions in rows
     ]

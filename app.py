@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 from flask import Flask, render_template, request
@@ -7,6 +8,11 @@ import storage
 import survey
 
 app = Flask(__name__)
+
+# python app.py(디버그 모드)는 감시용 프로세스와 실제 서버 프로세스 두 개를 띄운다.
+# 감시용 프로세스에서까지 모델을 불러오면 메모리를 두 배로 쓰므로 실제 서버에서만 불러온다.
+if __name__ != "__main__" or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    feelings.warm_up()
 
 LIVED_KEYS = {key for key, _ in storage.LIVED_CHOICES}
 
@@ -23,7 +29,7 @@ def index():
     satisfaction = None
     selected_moods = []
     feeling = ""
-    found_moods = []
+    mood_result = None
 
     if request.method == "POST":
         answers = survey.parse_answers(request.form)
@@ -39,11 +45,17 @@ def index():
             error = f"아직 답하지 않은 문항이 {missing}개 있습니다."
         else:
             result = survey.score(answers)
-            found_moods = feelings.analyze(selected_moods, feeling)
+            mood_result = feelings.analyze(selected_moods, feeling, result)
             if consent:
                 try:
                     storage.save_response(
-                        answers, result["total"], lived, satisfaction, selected_moods, feeling
+                        answers,
+                        result["total"],
+                        lived,
+                        satisfaction,
+                        selected_moods,
+                        feeling,
+                        mood_result["emotions"],
                     )
                     saved = True
                 except (sqlite3.Error, OSError):
@@ -65,7 +77,7 @@ def index():
         satisfaction=satisfaction,
         selected_moods=selected_moods,
         feeling=feeling,
-        found_moods=found_moods,
+        mood_result=mood_result,
     )
 
 

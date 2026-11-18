@@ -178,6 +178,14 @@
     .comfort .bar span { background: var(--comfort); }
     .mid .bar span { background: var(--mid); }
     .hard .bar span { background: var(--hard); }
+    .advice {
+      margin-top: 8px !important;
+      padding: 8px 12px;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      color: var(--text) !important;
+    }
+    .advice span { display: block; font-weight: 600; font-size: 0.85rem; color: var(--accent); }
     .hint { margin: 16px 0 0; color: var(--muted); font-size: 0.85rem; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -204,17 +212,26 @@
         {% endif %}
       </section>
 
-      {% if found_moods or feeling %}
+      {% if mood_result and (mood_result.moods or feeling) %}
         <section class="card">
-          <h2>지금 마음</h2>
+          <h2>지금 마음과 일본 생활</h2>
+          {% if mood_result.balance %}<p class="help">지금은 <strong>{{ mood_result.balance }}</strong>입니다. 이 결과는 종합 점수에 반영하지 않습니다.</p>{% endif %}
           {% if feeling %}<blockquote>{{ feeling }}</blockquote>{% endif %}
-          {% for mood in found_moods %}
+          {% if mood_result.top %}
+            <p class="help">AI가 글에서 읽은 감정:
+              {% for item in mood_result.top %}{{ item.label }} {{ item.percent }}%{% if not loop.last %} · {% endif %}{% endfor %}
+            </p>
+          {% endif %}
+          {% for mood in mood_result.moods %}
             <div class="mood">
-              <strong>{{ mood.emoji }} {{ mood.label }}{% if mood.from_text %}<span class="tag">적어주신 글에서 찾음</span>{% endif %}</strong>
+              <strong>{{ mood.emoji }} {{ mood.label }}{% if mood.from_text %}<span class="tag">적어주신 글에서 찾음{% if mood.percent %} · {{ mood.percent }}%{% endif %}</span>{% endif %}</strong>
               <p>{{ mood.message }}</p>
+              {% for tip in mood.advice %}
+                <p class="advice"><span>{{ tip.name }} {{ tip.score }}점</span> {{ tip.text }}</p>
+              {% endfor %}
             </div>
           {% else %}
-            <p class="help">적어주신 글에서 뚜렷한 감정 단어를 찾지 못했습니다.</p>
+            <p class="help">적어주신 글에서 일본 생활과 관련된 뚜렷한 감정을 찾지 못했습니다.</p>
           {% endfor %}
         </section>
       {% endif %}
@@ -255,7 +272,11 @@
         {% else %}
           종합 점수는 해외 적응 연구에서 예측력이 크다고 보고된 항목에 더 큰 비중을 둔 가중 평균이며, 아직 학습된 예측 모델은 아닙니다.
         {% endif %}
-        감정은 선택한 항목과 글 속 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
+        {% if mood_result and mood_result.method == "model" %}
+          글 속 감정은 한국어 댓글 5만 개로 학습한 KOTE 모델(searle-j/kote_for_easygoing_people)이 읽었으며, 틀릴 수 있습니다.
+        {% elif mood_result and mood_result.method == "keywords" %}
+          글 속 감정은 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
+        {% endif %}
         문화 특징은 흔히 언급되는 경향일 뿐 모든 일본인에게 해당하지 않습니다.
         점수가 낮은 항목은 "맞지 않는다"가 아니라 "미리 알아두면 좋은 부분"으로 읽어 주세요.
       </p>
