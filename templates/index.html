@@ -204,6 +204,31 @@
     .review-item { padding: 12px 0; border-top: 1px solid var(--border); }
     .review-item:first-of-type { border-top: 0; }
     .review-item p { margin: 2px 0 0; color: var(--muted); font-size: 0.92rem; }
+    h3 { margin: 16px 0 6px; font-size: 0.95rem; }
+    .fact {
+      margin-top: 6px !important;
+      padding: 8px 10px;
+      border-left: 3px solid var(--accent);
+      background: var(--accent-soft);
+      border-radius: 0 6px 6px 0;
+      color: var(--text) !important;
+      font-size: 0.85rem !important;
+    }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+    .stats div { padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+    .stats strong { display: block; font-size: 1.6rem; line-height: 1.2; }
+    .stats span { color: var(--muted); font-size: 0.82rem; }
+    .reasons { margin: 0; padding: 0; list-style: none; }
+    .reasons li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0 10px;
+      padding: 6px 0;
+      border-top: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .reasons li:first-child { border-top: 0; }
+    .reasons small { grid-column: 2; color: var(--muted); font-size: 0.75rem; text-align: right; }
     .hint { margin: 16px 0 0; color: var(--muted); font-size: 0.85rem; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -272,8 +297,35 @@
             </p>
           {% endif %}
           <p>{{ axis.comment }}</p>
+          {% if axis.fact %}<p class="fact">📊 {{ axis.fact }}</p>{% endif %}
         </div>
       {% endmacro %}
+
+      {% if result.baseline %}
+        {% set b = result.baseline %}
+        <section class="card">
+          <h2>실제로 일본에 사는 한국인들은</h2>
+          <p class="help">{{ b.source_ko }}({{ b.year }}년, 재류 외국인 {{ "{:,}".format(b.all.n) }}명 응답) 중 특별영주자를 뺀 한국인 {{ b.korea.n }}명의 결과입니다.</p>
+          <div class="stats">
+            <div><strong>{{ b.korea.satisfied }}%</strong><span>일본 생활에 만족<br>(전체 외국인 {{ b.all.satisfied }}%)</span></div>
+            <div><strong>{{ b.korea.lonely_often }}%</strong><span>자주·항상 외로움을 느낌<br>(전체 외국인 {{ b.all.lonely_often }}%)</span></div>
+          </div>
+          <h3>만족하는 이유</h3>
+          <ul class="reasons">
+            {% for r in b.korea.satisfied_reasons[:3] %}
+              <li><span>{{ r.label }}</span><b>{{ r.korea }}%</b><small>전체 {{ r.all }}%</small></li>
+            {% endfor %}
+          </ul>
+          <h3>만족하지 않는 이유 <span class="tag">응답 {{ b.korea.unsatisfied_n }}명, 참고용</span></h3>
+          <ul class="reasons">
+            {% for r in b.korea.unsatisfied_reasons[:3] %}
+              <li><span>{{ r.label }}</span><b>{{ r.korea }}%</b><small>전체 {{ r.all }}%</small></li>
+            {% endfor %}
+          </ul>
+          <p class="help">한국인은 다른 나라 출신보다 '일본의 문화나 습관이 맞는지'가 만족과 불만을 크게 가릅니다. 아래 문화 특징 결과를 특히 눈여겨보세요.</p>
+          {% for fact in b.facts if fact.axis == "general" %}<p class="fact">📊 {{ fact.text }}</p>{% endfor %}
+        </section>
+      {% endif %}
 
       <section class="card">
         <h2>문화 특징별 결과</h2>
@@ -323,6 +375,7 @@
           글 속 감정은 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
         {% endif %}
         성격 비교는 공개 성격검사 데이터(Open Psychometrics IPIP-FFM, 2016~2018, CC BY 4.0)의 한국·일본 응답자와 같은 문항으로 계산했습니다. 원래 영어로 진행된 온라인 검사라 영어를 하는 사람이 많이 포함되어 있고, 이 서비스의 문항은 한국어로 옮긴 것이어서 대략적인 비교로만 봐 주세요.
+        실제 통계는 일본 출입국재류관리청 「재류 외국인 기초조사」 2024·2025년도 공개 자료의 집계 수치입니다.
         일본 생활 상식 문제는 CulturalBench(Chiu 외, 2024, CC BY 4.0)의 일본 문제를 골라 한국어로 옮기고 다듬은 것입니다.
         문화 특징은 흔히 언급되는 경향일 뿐 모든 일본인에게 해당하지 않습니다.
         점수가 낮은 항목은 "맞지 않는다"가 아니라 "미리 알아두면 좋은 부분"으로 읽어 주세요.

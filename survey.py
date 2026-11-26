@@ -221,7 +221,9 @@ AXES = [
 #   1.5  : 효과가 크다고 보고된 문화 관련 특성 (문화적 공감, 동기)
 #   1.25 : 중간 크기 (외향성 계열, 개방성, 언어 능력)
 #   1.0  : 작거나 중간 크기 (친화성, 성실성, 정서 안정성)
-#   0.75 : 일본 문화 특징에 대한 선호. 수치로 검증한 연구를 찾지 못해 가장 낮게 둔다.
+#   1.0  : 일본 문화 특징에 대한 선호. 처음에는 근거가 약해 0.75로 두었으나, 법무성 재류 외국인
+#          기초조사(2024)에서 한국인(특별영주자 제외)이 일본 생활에 만족하는 이유 1위가
+#          '일본 사회의 문화나 습관이 맞아서'(31.5%, 전체 평균 16.7%)여서 1.0으로 올렸다.
 # 성격 항목 문항의 IPIP-FFM 열 이름 (scripts/build_norms.py의 ITEMS와 같아야 한다)
 IPIP_ITEMS = {
     "social_initiative": ["EXT5", "EXT10"],
@@ -249,11 +251,12 @@ WEIGHTS = {
     "stability": 1.0,
     "culture_knowledge": 1.0,
 }
-DEFAULT_WEIGHT = 0.75
+DEFAULT_WEIGHT = 1.0
 
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(ROOT, "model.json"))
 NORMS_PATH = os.path.join(ROOT, "data", "norms.json")
 QUIZ_PATH = os.path.join(ROOT, "data", "culture_quiz.json")
+MOJ_PATH = os.path.join(ROOT, "data", "moj_survey.json")
 
 
 def _load_json(path):
@@ -266,6 +269,15 @@ def _load_json(path):
 
 QUIZ = (_load_json(QUIZ_PATH) or {}).get("questions", [])
 NORMS = _load_json(NORMS_PATH)
+MOJ = _load_json(MOJ_PATH)
+
+
+def moj_fact(key):
+    """법무성 조사에서 그 항목과 관련된 실제 통계 한 줄."""
+    for fact in (MOJ or {}).get("facts", []):
+        if fact["axis"] == key:
+            return fact["text"]
+    return None
 ALL_AXIS_KEYS = [axis["key"] for axis in AXES] + ([KNOWLEDGE_AXIS["key"]] if QUIZ else [])
 
 MID_TEXT ="크게 편하지도 불편하지도 않은 수준입니다. 상황에 따라 다르게 느낄 수 있습니다."
@@ -415,6 +427,7 @@ def score(answers):
                 "level": level,
                 "comment": comment,
                 "norm": norm_comparison(axis["key"], axis_score),
+                "fact": moj_fact(axis["key"]) if level == "hard" else None,
             }
         )
 
@@ -431,6 +444,7 @@ def score(answers):
         "personality": [a for a in axes if a["group"] == "personality"],
         "knowledge": [a for a in axes if a["group"] == "knowledge"],
         "quiz": quiz_review(answers),
+        "baseline": MOJ,
         "quiz_correct": sum(1 for q in quiz_review(answers) if q["correct"]),
         "comfort": [a for a in axes if a["level"] == "comfort"],
         "hard": [a for a in axes if a["level"] == "hard"],
