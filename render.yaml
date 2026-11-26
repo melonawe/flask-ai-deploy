@@ -1,0 +1,15 @@
+# Render 배포 설정 (Blueprint). Render 대시보드에서 New > Blueprint로 이 저장소를 연결하면 읽힌다.
+services:
+  - type: web
+    name: japan-life-fit
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      # 응답을 저장할 PostgreSQL 주소. 값은 Render 화면에서 직접 넣는다(저장소에 올리지 않음).
+      - key: DATABASE_URL
+        sync: false
+      # 무료 플랜은 메모리가 512MB라 KOTE 모델을 쓰지 않고 단어 찾기 방식으로 감정을 읽는다.
+      - key: EMOTION_MODEL
+        value: "off"

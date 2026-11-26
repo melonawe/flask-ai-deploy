@@ -1,7 +1,7 @@
 import os
-import sqlite3
 
 from flask import Flask, render_template, request
+from sqlalchemy.exc import SQLAlchemyError
 
 import feelings
 import storage
@@ -60,7 +60,7 @@ def index():
                         survey.SURVEY_VERSION,
                     )
                     saved = True
-                except (sqlite3.Error, OSError):
+                except (SQLAlchemyError, OSError):
                     app.logger.exception("응답 저장 실패")
 
     return render_template(
