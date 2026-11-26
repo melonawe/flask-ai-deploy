@@ -186,6 +186,24 @@
       color: var(--text) !important;
     }
     .advice span { display: block; font-weight: 600; font-size: 0.85rem; color: var(--accent); }
+    .choices { clear: both; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .choices .pick span { justify-content: flex-start; text-align: left; }
+    .axis .bar { position: relative; overflow: visible; }
+    .marker {
+      position: absolute;
+      top: -3px;
+      width: 2px;
+      height: 14px;
+      margin-left: -1px;
+      background: var(--text);
+      border-radius: 1px;
+    }
+    .norm { font-size: 0.82rem !important; }
+    .review { margin-top: 16px; }
+    .review summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+    .review-item { padding: 12px 0; border-top: 1px solid var(--border); }
+    .review-item:first-of-type { border-top: 0; }
+    .review-item p { margin: 2px 0 0; color: var(--muted); font-size: 0.92rem; }
     .hint { margin: 16px 0 0; color: var(--muted); font-size: 0.85rem; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -197,7 +215,7 @@
   <main>
     <header>
       <h1>일본 생활 적합도 분석</h1>
-      <p class="sub">지금 마음을 먼저 적고, {{ questions | length }}개 문항에 답하면 일본 생활에서 편할 부분과 힘들 부분을 알려드립니다. 5분 정도 걸립니다.</p>
+      <p class="sub">지금 마음을 먼저 적고, {{ (questions | length) + (quiz | length) }}개 문항에 답하면 일본 생활에서 편할 부분과 힘들 부분을 알려드립니다. 5분 정도 걸립니다.</p>
     </header>
 
     {% if result %}
@@ -236,27 +254,54 @@
         </section>
       {% endif %}
 
+      {% macro axis_row(axis) %}
+        <div class="axis {{ axis.level }}">
+          <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
+          <div class="bar">
+            <span style="width: {{ axis.score }}%"></span>
+            {% if axis.norm and axis.norm.japan_mean is not none %}
+              <i class="marker" style="left: {{ axis.norm.japan_mean }}%" title="일본인 평균"></i>
+            {% endif %}
+          </div>
+          {% if axis.norm %}
+            <p class="norm">
+              한국인 응답자 {{ "{:,}".format(axis.norm.korea_n) }}명 중
+              {% if axis.norm.percentile >= 50 %}상위 {{ 100 - axis.norm.percentile }}%{% else %}하위 {{ axis.norm.percentile }}%{% endif %}
+              · 한국인 평균 {{ axis.norm.korea_mean | round | int }}점
+              {% if axis.norm.japan_mean is not none %}· 일본인 평균 {{ axis.norm.japan_mean | round | int }}점 (막대의 세로선){% endif %}
+            </p>
+          {% endif %}
+          <p>{{ axis.comment }}</p>
+        </div>
+      {% endmacro %}
+
       <section class="card">
         <h2>문화 특징별 결과</h2>
-        {% for axis in result.culture %}
-          <div class="axis {{ axis.level }}">
-            <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
-            <div class="bar"><span style="width: {{ axis.score }}%"></span></div>
-            <p>{{ axis.comment }}</p>
-          </div>
-        {% endfor %}
+        {% for axis in result.culture %}{{ axis_row(axis) }}{% endfor %}
       </section>
 
       <section class="card">
         <h2>적응과 관련된 특성</h2>
-        {% for axis in result.personality %}
-          <div class="axis {{ axis.level }}">
-            <div class="axis-head"><span>{{ axis.name }}</span><span>{{ axis.score }}</span></div>
-            <div class="bar"><span style="width: {{ axis.score }}%"></span></div>
-            <p>{{ axis.comment }}</p>
-          </div>
-        {% endfor %}
+        {% for axis in result.personality %}{{ axis_row(axis) }}{% endfor %}
       </section>
+
+      {% if result.knowledge %}
+        <section class="card">
+          <h2>일본 생활 상식 <span class="tag">{{ result.quiz_correct }} / {{ result.quiz | length }} 정답</span></h2>
+          {% for axis in result.knowledge %}{{ axis_row(axis) }}{% endfor %}
+          <details class="review">
+            <summary>문제별 정답과 해설 보기</summary>
+            {% for item in result.quiz %}
+              <div class="review-item {{ 'right' if item.correct else 'wrong' }}">
+                <strong>{{ '⭕' if item.correct else '❌' }} {{ item.text }}</strong>
+                {% if not item.correct %}<p>고른 답: {{ item.chosen }}</p>{% endif %}
+                <p>정답: {{ item.answer }}</p>
+                <p>{{ item.explain }}</p>
+              </div>
+            {% endfor %}
+          </details>
+        </section>
+      {% endif %}
 
       <a class="button" href="/">다시 하기</a>
 
@@ -277,6 +322,8 @@
         {% elif mood_result and mood_result.method == "keywords" %}
           글 속 감정은 단어로만 찾기 때문에 문맥을 놓칠 수 있습니다.
         {% endif %}
+        성격 비교는 공개 성격검사 데이터(Open Psychometrics IPIP-FFM, 2016~2018, CC BY 4.0)의 한국·일본 응답자와 같은 문항으로 계산했습니다. 원래 영어로 진행된 온라인 검사라 영어를 하는 사람이 많이 포함되어 있고, 이 서비스의 문항은 한국어로 옮긴 것이어서 대략적인 비교로만 봐 주세요.
+        일본 생활 상식 문제는 CulturalBench(Chiu 외, 2024, CC BY 4.0)의 일본 문제를 골라 한국어로 옮기고 다듬은 것입니다.
         문화 특징은 흔히 언급되는 경향일 뿐 모든 일본인에게 해당하지 않습니다.
         점수가 낮은 항목은 "맞지 않는다"가 아니라 "미리 알아두면 좋은 부분"으로 읽어 주세요.
       </p>
@@ -305,9 +352,9 @@
         <div class="progress">
           <div class="progress-text">
             <span class="step">2단계 · 문항</span>
-            <span><span data-done>{{ answers | length }}</span> / {{ questions | length }} 완료</span>
+            <span><span data-done>{{ answers | length }}</span> / {{ (questions | length) + (quiz | length) }} 완료</span>
           </div>
-          <div class="bar"><span data-bar style="width: {{ (answers | length) / (questions | length) * 100 }}%"></span></div>
+          <div class="bar"><span data-bar style="width: {{ (answers | length) / ((questions | length) + (quiz | length)) * 100 }}%"></span></div>
         </div>
 
         {% for q in questions %}
@@ -325,8 +372,29 @@
           </fieldset>
         {% endfor %}
 
+        <section class="card quiz-intro">
+          <div class="step">3단계 · 일본 생활 상식</div>
+          <h2>일본에서 이럴 땐 어떻게 할까요?</h2>
+          <p class="help">정답은 결과 화면에서 해설과 함께 알려드립니다. 모르면 가장 그럴듯한 것을 골라 주세요.</p>
+        </section>
+
+        {% for q in quiz %}
+          <fieldset class="card q {{ 'missing' if error and q.id not in answers }}">
+            <legend><span class="q-num">{{ questions | length + loop.index }}.</span> {{ q.text }}</legend>
+            <div class="choices">
+              {% for value, label in q.options %}
+                <label class="pick">
+                  <input type="radio" name="{{ q.id }}" value="{{ value }}" required
+                         {{ 'checked' if answers.get(q.id) == value }}>
+                  <span>{{ label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </fieldset>
+        {% endfor %}
+
         <section class="card">
-          <div class="step">3단계 · 선택</div>
+          <div class="step">4단계 · 선택</div>
           <h2>응답 저장</h2>
           <label class="check">
             <input type="checkbox" name="consent" value="yes" {{ 'checked' if consent }}>

@@ -7,3 +7,6 @@ __pycache__/
 chroma_db/
 *.log
 .claude/
+
+# 직접 내려받은 원본 자료 (저작권 확인 전에는 저장소에 올리지 않음)
+data/*.pdf

@@ -3,6 +3,12 @@
 각 축은 5점 척도 문항 2개로 이루어진다. reverse=True 문항은 역채점한다.
 축 점수는 0~100이며, 높을수록 그 특징을 편하게 느낀다는 뜻이다.
 
+성격 항목 4개(먼저 다가가기, 친화성, 성실성, 정서 안정성)는 공개 성격검사 IPIP Big Five
+50문항(Goldberg, 1992)에서 2개씩을 한국어로 옮긴 것이다. 그래서 IPIP-FFM 공개 데이터의
+한국·일본 응답자 분포(data/norms.json)와 비교할 수 있다. 문항 번호는 IPIP_ITEMS에 있다.
+
+'일본 생활 상식' 항목은 CulturalBench(CC BY 4.0)의 일본 문제 8개로 만든 퀴즈다(data/culture_quiz.json).
+
 종합 점수는 두 가지 방식 중 하나로 계산한다.
 - model.json이 있으면: train.py가 실제 응답으로 학습한 회귀 모델
 - 없으면: 연구 결과를 참고해 정한 가중 평균 (WEIGHTS)
@@ -10,6 +16,14 @@
 
 import json
 import os
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# 응답을 저장할 때 함께 남기는 설문 버전. 문항 문구나 구성이 바뀌면 올린다.
+# train.py는 현재 버전의 응답만 학습에 쓴다.
+#   1: 32문항 (2026-11-19까지)
+#   2: 성격 4개 항목을 IPIP 문항으로 교체, 일본 생활 상식 퀴즈 8문항 추가
+SURVEY_VERSION = 2
 
 SCALE = [
     (1, "전혀 아니다"),
@@ -116,30 +130,30 @@ AXES = [
         "group": "personality",
         "name": "친화성",
         "items": [
-            ("다른 사람의 입장을 먼저 생각하고 맞춰주는 편이다.", False),
-            ("의견이 다르면 양보하기보다 내 주장을 끝까지 밀어붙인다.", True),
+            ("다른 사람의 감정에 공감한다.", False),
+            ("다른 사람에게 별로 관심을 두지 않는다.", True),
         ],
-        "high": "상대에게 맞추는 성향은 일본 거주 외국인의 적응과 관련이 있다고 보고된 특성입니다.",
-        "low": "주장을 강하게 밀어붙이면 조화를 중시하는 자리에서 마찰이 생길 수 있습니다.",
+        "high": "다른 사람의 감정을 살피는 성향은 일본 거주 외국인의 적응과 관련이 있다고 보고된 특성입니다.",
+        "low": "상대의 감정을 살피는 데 익숙하지 않으면, 배려와 분위기를 중시하는 일본에서 오해를 사기 쉽습니다.",
     },
     {
         "key": "conscientiousness",
         "group": "personality",
         "name": "성실성",
         "items": [
-            ("맡은 일은 세부적인 부분까지 꼼꼼하게 마무리한다.", False),
-            ("계획을 세워도 자주 미루는 편이다.", True),
+            ("해야 할 일을 바로바로 처리한다.", False),
+            ("해야 할 일을 피하거나 소홀히 할 때가 있다.", True),
         ],
         "high": "꼼꼼함과 시간 엄수는 직장과 행정 절차에서 강점이 됩니다.",
-        "low": "마감과 서류 절차가 엄격해, 미루는 습관이 있으면 부담이 커질 수 있습니다.",
+        "low": "일본은 마감과 서류 절차가 엄격해서, 할 일을 미루거나 소홀히 하면 부담이 커질 수 있습니다.",
     },
     {
         "key": "stability",
         "group": "personality",
         "name": "정서 안정성",
         "items": [
-            ("낯선 환경에서도 비교적 마음이 편안하다.", False),
-            ("작은 일에도 걱정이 많고 쉽게 불안해진다.", True),
+            ("대부분의 시간 동안 마음이 편안하다.", False),
+            ("쉽게 스트레스를 받는다.", True),
         ],
         "high": "낯선 환경에서도 스트레스를 덜 받는 편입니다.",
         "low": "해외 생활 초반의 외로움과 불안이 크게 느껴질 수 있습니다. 한국어로 기댈 수 있는 관계를 미리 마련해 두세요.",
@@ -171,8 +185,8 @@ AXES = [
         "group": "personality",
         "name": "먼저 다가가기",
         "items": [
-            ("새로운 모임에서 먼저 말을 거는 편이다.", False),
-            ("모르는 사람들 사이에 있으면 조용히 있는 편이다.", True),
+            ("대화를 먼저 시작하는 편이다.", False),
+            ("낯선 사람들 앞에서는 조용한 편이다.", True),
         ],
         "high": "먼저 다가가는 성향은 현지에서 관계를 만드는 데 유리합니다.",
         "low": "일본에서는 상대가 먼저 다가오는 일이 드뭅니다. 동아리나 모임처럼 정해진 틀이 있는 자리를 활용해 보세요.",
@@ -208,6 +222,22 @@ AXES = [
 #   1.25 : 중간 크기 (외향성 계열, 개방성, 언어 능력)
 #   1.0  : 작거나 중간 크기 (친화성, 성실성, 정서 안정성)
 #   0.75 : 일본 문화 특징에 대한 선호. 수치로 검증한 연구를 찾지 못해 가장 낮게 둔다.
+# 성격 항목 문항의 IPIP-FFM 열 이름 (scripts/build_norms.py의 ITEMS와 같아야 한다)
+IPIP_ITEMS = {
+    "social_initiative": ["EXT5", "EXT10"],
+    "agreeableness": ["AGR4", "AGR1"],
+    "conscientiousness": ["CSN5", "CSN8"],
+    "stability": ["EST2", "EST1"],
+}
+
+KNOWLEDGE_AXIS = {
+    "key": "culture_knowledge",
+    "group": "knowledge",
+    "name": "일본 생활 상식",
+    "high": "일본 생활 예절을 잘 알고 있습니다. 현지 문화를 아는 것은 일상의 마찰을 줄여 줍니다.",
+    "low": "틀린 문제의 해설을 확인해 보세요. 호칭, 식사, 전철 예절처럼 매일 마주치는 상식부터 알아두면 첫 몇 달이 훨씬 편해집니다.",
+}
+
 WEIGHTS = {
     "cultural_empathy": 1.5,
     "motivation": 1.5,
@@ -217,13 +247,26 @@ WEIGHTS = {
     "agreeableness": 1.0,
     "conscientiousness": 1.0,
     "stability": 1.0,
+    "culture_knowledge": 1.0,
 }
 DEFAULT_WEIGHT = 0.75
 
-MODEL_PATH = os.environ.get(
-    "MODEL_PATH",
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.json"),
-)
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(ROOT, "model.json"))
+NORMS_PATH = os.path.join(ROOT, "data", "norms.json")
+QUIZ_PATH = os.path.join(ROOT, "data", "culture_quiz.json")
+
+
+def _load_json(path):
+    try:
+        with open(path, encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, ValueError):
+        return None
+
+
+QUIZ = (_load_json(QUIZ_PATH) or {}).get("questions", [])
+NORMS = _load_json(NORMS_PATH)
+ALL_AXIS_KEYS = [axis["key"] for axis in AXES] + ([KNOWLEDGE_AXIS["key"]] if QUIZ else [])
 
 MID_TEXT ="크게 편하지도 불편하지도 않은 수준입니다. 상황에 따라 다르게 느낄 수 있습니다."
 
@@ -238,14 +281,68 @@ def build_questions():
     return questions
 
 
+def build_quiz():
+    """폼에 그릴 퀴즈 문항. 정답과 해설은 결과 화면에서만 쓴다."""
+    return [
+        {"id": q["id"], "text": q["text"], "options": list(enumerate(q["options"]))}
+        for q in QUIZ
+    ]
+
+
+def question_ids():
+    return {q["id"] for q in build_questions()} | {q["id"] for q in QUIZ}
+
+
 def parse_answers(form):
-    """폼에서 1~5 사이의 응답만 골라 {문항 id: 점수}로 돌려준다."""
+    """폼에서 유효한 응답만 골라 {문항 id: 값}으로 돌려준다.
+
+    5점 척도 문항은 1~5, 퀴즈는 고른 보기의 번호(0부터)를 값으로 쓴다.
+    """
     answers = {}
     for question in build_questions():
         raw = form.get(question["id"], "")
         if raw in {"1", "2", "3", "4", "5"}:
             answers[question["id"]] = int(raw)
+    for question in QUIZ:
+        raw = form.get(question["id"], "")
+        if raw.isdigit() and int(raw) < len(question["options"]):
+            answers[question["id"]] = int(raw)
     return answers
+
+
+def quiz_review(answers):
+    """퀴즈 문항별 정답 여부와 해설."""
+    return [
+        {
+            "text": q["text"],
+            "correct": answers.get(q["id"]) == q["answer"],
+            "chosen": q["options"][answers[q["id"]]] if q["id"] in answers else None,
+            "answer": q["options"][q["answer"]],
+            "explain": q["explain"],
+        }
+        for q in QUIZ
+    ]
+
+
+def norm_comparison(key, score):
+    """IPIP-FFM 한국·일본 응답자 분포와 비교한 결과. 기준값이 없는 항목이면 None."""
+    if not NORMS or key not in IPIP_ITEMS:
+        return None
+    countries = NORMS.get("countries", {})
+    korea = countries.get("KR", {}).get("axes", {}).get(key)
+    japan = countries.get("JP", {}).get("axes", {}).get(key)
+    if not korea:
+        return None
+    percentile = korea["percentile"].get(str(score))
+    if percentile is None:
+        return None
+    return {
+        "korea_n": countries["KR"]["n"],
+        "korea_mean": korea["mean"],
+        "percentile": percentile,
+        "japan_mean": japan["mean"] if japan else None,
+        "japan_n": countries.get("JP", {}).get("n"),
+    }
 
 
 def level_of(score):
@@ -266,6 +363,9 @@ def axis_scores(answers):
             values.append(6 - value if reverse else value)
         mean = sum(values) / len(values)
         scores[axis["key"]] = round((mean - 1) / 4 * 100)
+    if QUIZ:
+        correct = sum(1 for q in QUIZ if answers[q["id"]] == q["answer"])
+        scores[KNOWLEDGE_AXIS["key"]] = round(correct / len(QUIZ) * 100)
     return scores
 
 
@@ -274,7 +374,7 @@ def load_model(path=None):
     try:
         with open(path or MODEL_PATH, encoding="utf-8") as file:
             model = json.load(file)
-        if set(model["coef"]) != {axis["key"] for axis in AXES}:
+        if set(model["coef"]) != set(ALL_AXIS_KEYS):
             return None
         float(model["intercept"])
         return model
@@ -302,7 +402,7 @@ def score(answers):
     """모든 문항에 응답한 answers를 받아 축별 점수와 종합 점수를 계산한다."""
     scores = axis_scores(answers)
     axes = []
-    for axis in AXES:
+    for axis in AXES + ([KNOWLEDGE_AXIS] if QUIZ else []):
         axis_score = scores[axis["key"]]
         level = level_of(axis_score)
         comment = {"comfort": axis["high"], "hard": axis["low"], "mid": MID_TEXT}[level]
@@ -314,6 +414,7 @@ def score(answers):
                 "score": axis_score,
                 "level": level,
                 "comment": comment,
+                "norm": norm_comparison(axis["key"], axis_score),
             }
         )
 
@@ -328,6 +429,9 @@ def score(answers):
         "level": level_of(total),
         "culture": [a for a in axes if a["group"] == "culture"],
         "personality": [a for a in axes if a["group"] == "personality"],
+        "knowledge": [a for a in axes if a["group"] == "knowledge"],
+        "quiz": quiz_review(answers),
+        "quiz_correct": sum(1 for q in quiz_review(answers) if q["correct"]),
         "comfort": [a for a in axes if a["level"] == "comfort"],
         "hard": [a for a in axes if a["level"] == "hard"],
     }

@@ -20,6 +20,7 @@ LIVED_KEYS = {key for key, _ in storage.LIVED_CHOICES}
 @app.route("/", methods=["GET", "POST"])
 def index():
     questions = survey.build_questions()
+    quiz = survey.build_quiz()
     answers = {}
     result = None
     error = None
@@ -40,7 +41,7 @@ def index():
         raw_satisfaction = request.form.get("satisfaction", "")
         satisfaction = int(raw_satisfaction) if raw_satisfaction in {"1", "2", "3", "4", "5"} else None
 
-        missing = len(questions) - len(answers)
+        missing = len(survey.question_ids()) - len(answers)
         if missing:
             error = f"아직 답하지 않은 문항이 {missing}개 있습니다."
         else:
@@ -56,6 +57,7 @@ def index():
                         selected_moods,
                         feeling,
                         mood_result["emotions"],
+                        survey.SURVEY_VERSION,
                     )
                     saved = True
                 except (sqlite3.Error, OSError):
@@ -64,6 +66,7 @@ def index():
     return render_template(
         "index.html",
         questions=questions,
+        quiz=quiz,
         scale=survey.SCALE,
         moods=feelings.MOODS,
         max_text_length=feelings.MAX_TEXT_LENGTH,

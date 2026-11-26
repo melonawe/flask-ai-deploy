@@ -24,14 +24,14 @@ FOLDS = 5
 
 def collect():
     """학습에 쓸 수 있는 응답만 골라 (입력 행렬, 정답 목록)으로 돌려준다."""
-    question_ids = {question["id"] for question in survey.build_questions()}
-    keys = [axis["key"] for axis in survey.AXES]
+    question_ids = survey.question_ids()
+    keys = survey.ALL_AXIS_KEYS
     features, targets = [], []
     for row in storage.load_responses():
         if row["lived"] not in ("under1", "over1") or row["satisfaction"] is None:
             continue
-        if set(row["answers"]) != question_ids:
-            continue  # 문항 구성이 달랐던 예전 응답
+        if row["version"] != survey.SURVEY_VERSION or set(row["answers"]) != question_ids:
+            continue  # 문항 문구나 구성이 달랐던 예전 응답
         scores = survey.axis_scores(row["answers"])
         features.append([scores[key] / 100 for key in keys])
         targets.append(row["satisfaction"])
